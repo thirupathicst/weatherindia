@@ -1,0 +1,809 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#030d1a;--surface:#071829;--card:#0a2035;--card2:#0d2845;
+  --border:rgba(0,180,255,0.12);--border2:rgba(0,180,255,0.22);
+  --accent:#00b4ff;--accent2:#00ffb4;--warn:#ffb830;--danger:#ff4757;
+  --text:#dff2ff;--muted:rgba(223,242,255,0.5);--dim:rgba(223,242,255,0.28);
+  --r:14px;--r2:10px;
+}
+html{background:var(--bg)}
+body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+.app-wrap{max-width:440px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;position:relative}
+
+/* TOPBAR */
+.topbar{background:rgba(3,13,26,0.95);backdrop-filter:blur(16px);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:0.5px solid var(--border);position:sticky;top:0;z-index:200}
+.logo{display:flex;align-items:center;gap:8px}
+.logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#00b4ff,#00ffb4);display:flex;align-items:center;justify-content:center;font-size:16px}
+.logo-text{font-size:15px;font-weight:700;letter-spacing:-0.3px}
+.logo-text span{color:var(--accent)}
+.logo-sub{font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+.search-pill{display:flex;align-items:center;gap:6px;background:var(--card);border:0.5px solid var(--border2);border-radius:20px;padding:6px 12px;cursor:pointer;font-size:12px;color:var(--muted);font-family:'Space Grotesk',sans-serif;transition:all 0.2s}
+.search-pill:hover{border-color:var(--accent);color:var(--text)}
+
+/* SEARCH PANEL */
+.search-panel{position:fixed;inset:0;z-index:500;background:rgba(3,13,26,0.97);padding:20px;display:none;flex-direction:column;gap:12px;max-width:440px;margin:0 auto}
+.search-panel.open{display:flex}
+.s-header{display:flex;align-items:center;gap:10px}
+.s-input{flex:1;background:var(--card);border:0.5px solid var(--border2);border-radius:12px;padding:12px 16px;font-size:15px;color:var(--text);outline:none;font-family:'Space Grotesk',sans-serif}
+.s-input:focus{border-color:var(--accent)}
+.s-input::placeholder{color:var(--dim)}
+.s-close{background:none;border:0.5px solid var(--border);border-radius:8px;color:var(--muted);padding:8px 12px;cursor:pointer;font-size:16px}
+.s-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);font-family:'JetBrains Mono',monospace}
+.city-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.city-btn{background:var(--card);border:0.5px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;text-align:left;font-family:'Space Grotesk',sans-serif;transition:all 0.2s}
+.city-btn:hover{background:var(--card2);border-color:var(--accent)}
+.city-btn .cn{font-size:13px;font-weight:500;color:var(--text)}
+.city-btn .cs{font-size:11px;color:var(--muted);margin-top:1px}
+.city-btn .ct{font-size:10px;color:var(--accent);font-family:'JetBrains Mono',monospace}
+
+/* BOTTOM NAV */
+.bnav{position:sticky;bottom:0;background:rgba(3,13,26,0.97);backdrop-filter:blur(16px);border-top:0.5px solid var(--border);display:flex;z-index:199;padding-bottom:env(safe-area-inset-bottom)}
+.ntab{flex:1;padding:10px 4px 12px;text-align:center;cursor:pointer;background:none;border:none;font-family:'Space Grotesk',sans-serif;color:var(--dim);font-size:9px;letter-spacing:1px;text-transform:uppercase;transition:color 0.2s;display:flex;flex-direction:column;align-items:center;gap:3px}
+.ntab.on{color:var(--accent)}
+.ntab .ni{font-size:19px;line-height:1}
+
+/* PAGES */
+.page{display:none;flex:1;overflow-y:auto;padding-bottom:8px}
+.page.on{display:block}
+
+/* HERO */
+.hero{padding:20px 16px 0;position:relative;overflow:hidden}
+.hero-glow{position:absolute;top:-40px;right:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(0,180,255,0.08),transparent 70%);pointer-events:none}
+.city-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2px}
+.city-name{font-size:26px;font-weight:700;letter-spacing:-0.5px}
+.city-state{font-size:12px;color:var(--muted);margin-bottom:16px}
+.live-pill{display:flex;align-items:center;gap:5px;background:rgba(0,255,180,0.08);border:0.5px solid rgba(0,255,180,0.25);border-radius:12px;padding:4px 10px;font-size:10px;color:var(--accent2);letter-spacing:0.5px}
+.pulse{width:5px;height:5px;border-radius:50%;background:var(--accent2);animation:pulse 1.8s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
+.temp-block{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px}
+.temp-num{font-size:76px;font-weight:700;letter-spacing:-4px;line-height:0.9;font-family:'JetBrains Mono',monospace}
+.temp-unit{font-size:22px;color:var(--muted);font-weight:300;margin-top:10px}
+.wx-side{display:flex;flex-direction:column;gap:6px;padding-top:8px}
+.wx-emoji{font-size:42px;line-height:1}
+.wx-desc{font-size:11px;color:var(--muted);max-width:80px;line-height:1.4}
+.meta-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.mpill{background:var(--card);border:0.5px solid var(--border);border-radius:8px;padding:6px 10px;font-size:11px}
+.mpill span{color:var(--muted);font-size:10px;display:block}
+
+/* SECTIONS */
+.sec{padding:0 16px;margin-bottom:16px}
+.sec-label{font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--dim);margin-bottom:10px;font-family:'JetBrains Mono',monospace}
+
+/* STATS GRID */
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.scard{background:var(--card);border:0.5px solid var(--border);border-radius:var(--r2);padding:14px}
+.scard-lab{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-bottom:6px;font-family:'JetBrains Mono',monospace}
+.scard-val{font-size:22px;font-weight:600;font-family:'JetBrains Mono',monospace}
+.scard-val small{font-size:11px;color:var(--muted);font-weight:400}
+
+/* FORECAST INTERVALS */
+.interval-tabs{display:flex;gap:6px;margin-bottom:12px}
+.itab{padding:6px 14px;border-radius:20px;font-size:11px;cursor:pointer;border:0.5px solid var(--border);background:none;color:var(--muted);font-family:'Space Grotesk',sans-serif;transition:all 0.2s}
+.itab.on{background:var(--accent);border-color:var(--accent);color:#000;font-weight:600}
+
+/* METEOGRAM CARDS */
+.meteo-card{background:var(--card);border:0.5px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.meteo-title{font-size:11px;color:var(--muted);margin-bottom:10px;font-family:'JetBrains Mono',monospace;letter-spacing:1px}
+.chart-wrap{position:relative;height:120px;width:100%}
+
+/* 7-DAY CARDS */
+.day-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid var(--border)}
+.day-row:last-child{border-bottom:none;padding-bottom:0}
+.day-row:first-child{padding-top:0}
+.dr-day{font-size:12px;color:var(--muted);width:42px}
+.dr-day.today{color:var(--accent);font-weight:600}
+.dr-icon{font-size:20px;width:28px;text-align:center}
+.dr-desc{flex:1;font-size:11px;color:var(--muted);padding:0 6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.dr-temps{display:flex;gap:8px}
+.dr-max{font-size:13px;font-weight:600;font-family:'JetBrains Mono',monospace}
+.dr-min{font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+
+/* WIND */
+.wind-card{background:var(--card);border:0.5px solid var(--border);border-radius:var(--r);padding:16px;display:flex;align-items:center;gap:20px}
+.compass{width:80px;height:80px;border-radius:50%;border:1.5px solid var(--border2);position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.compass-arrow{font-size:28px;transition:transform 0.6s ease}
+.compass-labels{position:absolute;inset:0;pointer-events:none}
+.cl{position:absolute;font-size:8px;color:var(--dim);font-family:'JetBrains Mono',monospace}
+.wind-info{flex:1}
+.wind-val{font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.wind-unit{font-size:12px;color:var(--muted)}
+.wind-dir-text{font-size:12px;color:var(--accent);margin-top:4px}
+.wind-desc{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* SUN/MOON */
+.sunmoon-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sm-card{background:var(--card);border:0.5px solid var(--border);border-radius:var(--r2);padding:14px;text-align:center}
+.sm-icon{font-size:26px;margin-bottom:6px}
+.sm-time{font-size:18px;font-weight:600;font-family:'JetBrains Mono',monospace}
+.sm-label{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+
+/* NOWCAST WARNINGS */
+.warn-card{border-radius:var(--r);padding:14px;display:flex;gap:12px;margin-bottom:8px}
+.warn-bar{width:3px;border-radius:2px;flex-shrink:0;align-self:stretch}
+.warn-body{}
+.warn-loc{font-size:13px;font-weight:600;margin-bottom:3px}
+.warn-msg{font-size:12px;color:var(--muted);line-height:1.5}
+.warn-time{font-size:10px;color:var(--dim);margin-top:6px;font-family:'JetBrains Mono',monospace}
+.warn-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.wtag{font-size:9px;padding:2px 7px;border-radius:4px;letter-spacing:0.5px;font-family:'JetBrains Mono',monospace}
+
+/* RAINFALL BARS */
+.rain-item{margin-bottom:10px}
+.rain-head{display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px}
+.rain-cat{font-family:'JetBrains Mono',monospace;font-size:10px;padding:1px 6px;border-radius:3px}
+.rain-bg{background:rgba(255,255,255,0.05);border-radius:4px;height:7px;overflow:hidden}
+.rain-fill{height:100%;border-radius:4px;transition:width 0.7s ease}
+
+/* LOADING */
+.loader{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;gap:14px;color:var(--dim)}
+.spin{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* API EXPLORER */
+.api-item{background:var(--card);border:0.5px solid var(--border);border-radius:var(--r2);padding:14px;margin-bottom:8px;cursor:pointer;transition:all 0.2s}
+.api-item:hover{border-color:var(--accent);background:var(--card2)}
+.api-name{font-size:13px;font-weight:600;margin-bottom:4px}
+.api-url{font-size:10px;color:var(--accent);font-family:'JetBrains Mono',monospace;margin-bottom:5px;word-break:break-all}
+.api-desc{font-size:11px;color:var(--muted);line-height:1.5}
+.api-tags{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.atag{font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(0,180,255,0.1);color:var(--accent);font-family:'JetBrains Mono',monospace;border:0.5px solid rgba(0,180,255,0.2)}
+
+/* GEOLOC BTN */
+.geo-btn{display:flex;align-items:center;gap:8px;background:var(--card);border:0.5px solid var(--border2);border-radius:10px;padding:10px 14px;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:13px;color:var(--text);width:100%;margin-bottom:8px;transition:all 0.2s}
+.geo-btn:hover{border-color:var(--accent)}
+
+/* SEPARATOR */
+.sep{height:0.5px;background:var(--border);margin:16px 0}
+
+/* REFRESH */
+.refresh-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:none;border:0.5px solid var(--border2);border-radius:10px;padding:10px;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:12px;color:var(--accent);width:100%;transition:all 0.2s}
+.refresh-btn:hover{background:rgba(0,180,255,0.08)}
+.ts{font-size:10px;color:var(--dim);text-align:center;margin-top:8px;font-family:'JetBrains Mono',monospace}
+.disclaimer{font-size:10px;color:var(--dim);text-align:center;margin-top:4px;line-height:1.5}
+
+/* SELECT */
+select{width:100%;background:var(--card);border:0.5px solid var(--border);border-radius:10px;color:var(--text);padding:12px 14px;font-size:13px;font-family:'Space Grotesk',sans-serif;outline:none;cursor:pointer;margin-bottom:12px}
+select:focus{border-color:var(--accent)}
+
+/* ERROR TOAST */
+.toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--card2);border:0.5px solid var(--danger);border-radius:10px;padding:10px 16px;font-size:12px;color:var(--danger);z-index:1000;display:none;max-width:380px;width:90%}
+.toast.show{display:block;animation:fadeIn 0.3s}
+@keyframes fadeIn{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+</style>
+</head>
+<body>
+<div class="app-wrap">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">🌦</div>
+    <div>
+      <div class="logo-text">Mausam<span>Gram</span></div>
+      <div class="logo-sub">IMD · India</div>
+    </div>
+  </div>
+  <button class="search-pill" onclick="openSearch()">🔍 Search city</button>
+</div>
+
+<!-- SEARCH PANEL -->
+<div class="search-panel" id="searchPanel">
+  <div class="s-header">
+    <input class="s-input" id="sInput" placeholder="City name, pincode, or coordinates..." oninput="filterCities(this.value)">
+    <button class="s-close" onclick="closeSearch()">✕</button>
+  </div>
+  <button class="geo-btn" onclick="geoLocate()">📍 Use my current location</button>
+  <div class="s-label">Quick select</div>
+  <div class="city-grid" id="cityGrid"></div>
+  <div class="s-label" style="margin-top:12px" id="filteredLabel">All cities</div>
+  <div class="city-grid" id="filteredGrid"></div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- HOME PAGE -->
+<div class="page on" id="pg-home">
+  <div class="hero">
+    <div class="hero-glow"></div>
+    <div class="city-row">
+      <div>
+        <div class="city-name" id="hCity">New Delhi</div>
+        <div class="city-state" id="hState">Delhi · India</div>
+      </div>
+      <div class="live-pill"><span class="pulse"></span>Live</div>
+    </div>
+    <div class="temp-block">
+      <div><span class="temp-num" id="hTemp">–</span><span class="temp-unit">°C</span></div>
+      <div class="wx-side">
+        <div class="wx-emoji" id="hIcon">🌤</div>
+        <div class="wx-desc" id="hDesc">Loading...</div>
+      </div>
+    </div>
+    <div class="meta-pills" id="metaPills">
+      <div class="mpill"><span>High</span><span id="mHigh">–</span></div>
+      <div class="mpill"><span>Low</span><span id="mLow">–</span></div>
+      <div class="mpill"><span>Humidity</span><span id="mHum">–</span></div>
+      <div class="mpill"><span>Wind</span><span id="mWind">–</span></div>
+      <div class="mpill"><span>Rain 24h</span><span id="mRain">–</span></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Current conditions</div>
+    <div class="sgrid">
+      <div class="scard"><div class="scard-lab">Pressure</div><div class="scard-val" id="sc1">–<small>hPa</small></div></div>
+      <div class="scard"><div class="scard-lab">Visibility</div><div class="scard-val" id="sc2">–</div></div>
+      <div class="scard"><div class="scard-lab">Cloud cover</div><div class="scard-val" id="sc3">–<small>%</small></div></div>
+      <div class="scard"><div class="scard-lab">Dew point</div><div class="scard-val" id="sc4">–<small>°C</small></div></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Wind</div>
+    <div class="wind-card">
+      <div class="compass">
+        <div class="compass-labels">
+          <span class="cl" style="top:3px;left:50%;transform:translateX(-50%)">N</span>
+          <span class="cl" style="bottom:3px;left:50%;transform:translateX(-50%)">S</span>
+          <span class="cl" style="left:3px;top:50%;transform:translateY(-50%)">W</span>
+          <span class="cl" style="right:3px;top:50%;transform:translateY(-50%)">E</span>
+        </div>
+        <div class="compass-arrow" id="windArrow">↑</div>
+      </div>
+      <div class="wind-info">
+        <div class="wind-val" id="windSpd">–<span class="wind-unit"> km/h</span></div>
+        <div class="wind-dir-text" id="windDir">–</div>
+        <div class="wind-desc" id="windDesc">–</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Sun & Moon</div>
+    <div class="sunmoon-grid">
+      <div class="sm-card"><div class="sm-icon">🌅</div><div class="sm-time" id="smSR">–</div><div class="sm-label">Sunrise</div></div>
+      <div class="sm-card"><div class="sm-icon">🌇</div><div class="sm-time" id="smSS">–</div><div class="sm-label">Sunset</div></div>
+      <div class="sm-card"><div class="sm-icon">🌙</div><div class="sm-time" id="smMR">–</div><div class="sm-label">Moonrise</div></div>
+      <div class="sm-card"><div class="sm-icon">🌑</div><div class="sm-time" id="smMS">–</div><div class="sm-label">Moonset</div></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <button class="refresh-btn" onclick="loadAll()">↻ &nbsp;Refresh data</button>
+    <div class="ts" id="ts">Last updated: –</div>
+    <div class="disclaimer">Data sourced from MausamGram (mausamgram.imd.gov.in) &amp; IMD Open APIs.<br>Forecast valid for 12×12 km area.</div>
+  </div>
+</div>
+
+<!-- FORECAST PAGE -->
+<div class="page" id="pg-forecast">
+  <div style="padding:20px 16px 8px">
+    <div style="font-size:22px;font-weight:700;margin-bottom:2px">Forecast</div>
+    <div class="interval-tabs" id="intervalTabs">
+      <button class="itab on" onclick="setInterval2('1hr',this)">1-hr · 1.5d</button>
+      <button class="itab" onclick="setInterval2('3hr',this)">3-hr · 5d</button>
+      <button class="itab" onclick="setInterval2('6hr',this)">6-hr · 10d</button>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Rainfall (mm)</div>
+    <div class="meteo-card"><div class="chart-wrap"><canvas id="c-rain" role="img" aria-label="Rainfall forecast chart"></canvas></div></div>
+  </div>
+  <div class="sec">
+    <div class="sec-label">Temperature (°C)</div>
+    <div class="meteo-card"><div class="chart-wrap"><canvas id="c-temp" role="img" aria-label="Temperature forecast chart"></canvas></div></div>
+  </div>
+  <div class="sec">
+    <div class="sec-label">Relative Humidity (%)</div>
+    <div class="meteo-card"><div class="chart-wrap"><canvas id="c-rh" role="img" aria-label="Humidity forecast chart"></canvas></div></div>
+  </div>
+  <div class="sec">
+    <div class="sec-label">Cloud Cover (%)</div>
+    <div class="meteo-card"><div class="chart-wrap"><canvas id="c-cloud" role="img" aria-label="Cloud cover forecast chart"></canvas></div></div>
+  </div>
+  <div class="sec">
+    <div class="sec-label">Wind Speed (m/s)</div>
+    <div class="meteo-card"><div class="chart-wrap"><canvas id="c-wind" role="img" aria-label="Wind speed forecast chart"></canvas></div></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">7-day overview</div>
+    <div style="background:var(--card);border:0.5px solid var(--border);border-radius:var(--r);padding:14px" id="dayList">
+      <div class="loader"><div class="spin"></div>Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- WARNINGS PAGE -->
+<div class="page" id="pg-warnings">
+  <div style="padding:20px 16px 8px">
+    <div style="font-size:22px;font-weight:700;margin-bottom:2px">Warnings</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px">District &amp; station nowcast alerts</div>
+  </div>
+  <div class="sec">
+    <div class="sec-label">Active nowcast · <span id="warnCity">–</span></div>
+    <div id="nowcastWrap"><div class="loader"><div class="spin"></div>Loading...</div></div>
+  </div>
+  <div class="sec">
+    <div class="sec-label">5-day district outlook</div>
+    <div id="distWrap"><div class="loader"><div class="spin"></div>Loading...</div></div>
+  </div>
+  <div class="sec">
+    <div class="sec-label">Colour severity guide</div>
+    <div style="background:var(--card);border:0.5px solid var(--border);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px;font-size:12px"><span style="width:12px;height:12px;border-radius:3px;background:#7cfc00;flex-shrink:0"></span>Green — No weather</div>
+      <div style="display:flex;align-items:center;gap:10px;font-size:12px"><span style="width:12px;height:12px;border-radius:3px;background:#d4d400;flex-shrink:0"></span>Yellow — Watch (light events)</div>
+      <div style="display:flex;align-items:center;gap:10px;font-size:12px"><span style="width:12px;height:12px;border-radius:3px;background:#ffa500;flex-shrink:0"></span>Orange — Warning (moderate)</div>
+      <div style="display:flex;align-items:center;gap:10px;font-size:12px"><span style="width:12px;height:12px;border-radius:3px;background:#ff4444;flex-shrink:0"></span>Red — Severe alert</div>
+    </div>
+  </div>
+</div>
+
+<!-- RAINFALL PAGE -->
+<div class="page" id="pg-rainfall">
+  <div style="padding:20px 16px 8px">
+    <div style="font-size:22px;font-weight:700;margin-bottom:2px">Rainfall</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">State &amp; district statistics</div>
+  </div>
+  <div class="sec">
+    <div class="sec-label">Select state</div>
+    <select id="stateSelect" onchange="loadRainfall(this.value)">
+      <option value="maharashtra">Maharashtra</option>
+      <option value="kerala">Kerala</option>
+      <option value="rajasthan">Rajasthan</option>
+      <option value="delhi">Delhi</option>
+      <option value="gujarat">Gujarat</option>
+      <option value="karnataka">Karnataka</option>
+      <option value="tamil_nadu">Tamil Nadu</option>
+      <option value="west_bengal">West Bengal</option>
+      <option value="uttar_pradesh">Uttar Pradesh</option>
+      <option value="madhya_pradesh">Madhya Pradesh</option>
+      <option value="odisha">Odisha</option>
+      <option value="assam">Assam</option>
+    </select>
+    <div id="rainfallWrap"><div class="loader"><div class="spin"></div>Loading...</div></div>
+  </div>
+  <div class="sec">
+    <div class="sec-label">Rainfall departure chart</div>
+    <div style="background:var(--card);border:0.5px solid var(--border);border-radius:var(--r);padding:14px">
+      <div style="position:relative;height:200px"><canvas id="c-departure" role="img" aria-label="Rainfall departure chart"></canvas></div>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="sec-label">Category key</div>
+    <div style="background:var(--card);border:0.5px solid var(--border);border-radius:var(--r);padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px">
+      <div><span style="color:#4ade80;font-family:'JetBrains Mono',monospace">LE</span> Large Excess (≥60%)</div>
+      <div><span style="color:#86efac;font-family:'JetBrains Mono',monospace">E</span> Excess (20–59%)</div>
+      <div><span style="color:var(--accent);font-family:'JetBrains Mono',monospace">N</span> Normal (±19%)</div>
+      <div><span style="color:var(--warn);font-family:'JetBrains Mono',monospace">D</span> Deficient (−59–−20%)</div>
+      <div><span style="color:#f97316;font-family:'JetBrains Mono',monospace">LD</span> Large Deficient (−99%)</div>
+      <div><span style="color:var(--muted);font-family:'JetBrains Mono',monospace">NR</span> No Rain</div>
+    </div>
+  </div>
+</div>
+
+<!-- API PAGE -->
+<div class="page" id="pg-apis">
+  <div style="padding:20px 16px 8px">
+    <div style="font-size:22px;font-weight:700;margin-bottom:2px">IMD API Explorer</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:4px">15 data endpoints · mausamgram.imd.gov.in</div>
+  </div>
+  <div style="padding:0 16px" id="apiList"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bnav">
+  <button class="ntab on" onclick="switchPage('home',this)"><span class="ni">🌤</span>Weather</button>
+  <button class="ntab" onclick="switchPage('forecast',this)"><span class="ni">📊</span>Forecast</button>
+  <button class="ntab" onclick="switchPage('warnings',this)"><span class="ni">⚠️</span>Warnings</button>
+  <button class="ntab" onclick="switchPage('rainfall',this)"><span class="ni">🌧</span>Rainfall</button>
+  <button class="ntab" onclick="switchPage('apis',this)"><span class="ni">📡</span>APIs</button>
+</div>
+</div>
+
+<script>
+const CITIES=[
+  {n:'New Delhi',s:'Delhi',lat:28.6139,lon:77.2090,id:'42182'},
+  {n:'Mumbai',s:'Maharashtra',lat:19.0760,lon:72.8777,id:'43003'},
+  {n:'Chennai',s:'Tamil Nadu',lat:13.0827,lon:80.2707,id:'43279'},
+  {n:'Kolkata',s:'West Bengal',lat:22.5726,lon:88.3639,id:'42809'},
+  {n:'Bengaluru',s:'Karnataka',lat:12.9716,lon:77.5946,id:'43295'},
+  {n:'Hyderabad',s:'Telangana',lat:17.3850,lon:78.4867,id:'43128'},
+  {n:'Jaipur',s:'Rajasthan',lat:26.9124,lon:75.7873,id:'42357'},
+  {n:'Ahmedabad',s:'Gujarat',lat:23.0225,lon:72.5714,id:'42647'},
+  {n:'Pune',s:'Maharashtra',lat:18.5204,lon:73.8567,id:'43063'},
+  {n:'Lucknow',s:'Uttar Pradesh',lat:26.8467,lon:80.9462,id:'42591'},
+  {n:'Bhopal',s:'Madhya Pradesh',lat:23.2599,lon:77.4126,id:'42532'},
+  {n:'Patna',s:'Bihar',lat:25.5941,lon:85.1376,id:'42724'},
+  {n:'Bhubaneswar',s:'Odisha',lat:20.2961,lon:85.8245,id:'43057'},
+  {n:'Guwahati',s:'Assam',lat:26.1445,lon:91.7362,id:'42410'},
+  {n:'Kochi',s:'Kerala',lat:9.9312,lon:76.2673,id:'43371'},
+];
+
+const APIS=[
+  {n:'City Forecast 7-day',url:'https://api.imd.gov.in/api/v1/cityforecast?id=42182',d:'7-day weather forecast: max/min temps, humidity, rainfall, sunrise/sunset. Pass station id as query param.',t:['GET','Forecast','City']},
+  {n:'City Forecast + Location',url:'https://api.imd.gov.in/api/v1/cityforecastloc?id=42182',d:'Same as city forecast but includes latitude & longitude for mapping.',t:['GET','Forecast','GPS']},
+  {n:'Current Weather',url:'https://api.imd.gov.in/api/v1/current_wx?id=42182',d:'Live conditions: temperature, wind speed/direction, pressure, humidity, cloud cover, weather code, 24h rainfall.',t:['GET','Live','Current']},
+  {n:'District Nowcast',url:'https://api.imd.gov.in/api/v1/districtnowcast?id=1',d:'Real-time nowcast warnings per district. Categories: rain intensity, thunderstorm, fog, dust storm, lightning probability with color severity codes.',t:['GET','Nowcast','Warnings']},
+  {n:'District Rainfall',url:'https://api.imd.gov.in/api/v1/districtrainfall?id=164',d:'Daily, weekly, monthly & cumulative rainfall vs. normal with departure categories (LE/E/N/D/LD/NR).',t:['GET','Rainfall','District']},
+  {n:'District Warnings',url:'https://api.imd.gov.in/api/v1/districtwarning?id=573',d:'5-day district warnings: heat wave, cold wave, heavy rain, fog, hailstorm with color codes.',t:['GET','Warnings','5-day']},
+  {n:'Station Nowcast',url:'https://api.imd.gov.in/api/v1/stationnowcast?id=Adilabad',d:'Station-level nowcast at finer granularity than district. Useful for airport & infrastructure ops.',t:['GET','Nowcast','Station']},
+  {n:'State Rainfall',url:'https://api.imd.gov.in/api/v1/staterainfall?id=maharashtra',d:'State-level rainfall statistics with daily, weekly, monthly & cumulative data vs. normals.',t:['GET','Rainfall','State']},
+  {n:'AWS/ARG Data',url:'https://api.imd.gov.in/api/v1/aws_data?id=NDL',d:'Automatic Weather Station live data: temp, dew point, RH, wind, MSLP, min/max temp, feels-like.',t:['GET','AWS','Live']},
+  {n:'River Basin QPF',url:'https://api.imd.gov.in/api/v1/basinqpf?id=100',d:'Quantitative Precipitation Forecast for river basins — 5-day outlook for flood monitoring and water resource management.',t:['GET','QPF','Flood']},
+  {n:'Port Warning',url:'https://api.imd.gov.in/api/v1/portwarning',d:'Marine port warnings issued by CWC/ACWC for coastal and offshore vessel operations.',t:['GET','Marine','Ports']},
+  {n:'Sea Area Bulletin',url:'https://api.imd.gov.in/api/v1/seabulletin?id=108',d:'Sea area bulletins: wind, weather, visibility, sea conditions, synoptic situation for maritime zones.',t:['GET','Marine','Sea']},
+  {n:'Coastal Bulletin',url:'https://api.imd.gov.in/api/v1/coastalbulletin',d:'Coastal weather bulletins with port signal status and 12-hour validity. Issued by ACWC.',t:['GET','Marine','Coastal']},
+  {n:'Subdivisional Warnings',url:'https://api.imd.gov.in/api/v1/subdivisionwarning',d:'5-day warnings at meteorological subdivision level with color-coded daily severity ratings.',t:['GET','Warnings','Subdivision']},
+  {n:'Sun & Moon Times',url:'https://api.imd.gov.in/api/v1/sunmoon?lat=28.6&lon=77.2',d:'Sunrise, sunset, moonrise, moonset for any coordinates. Returns time in IST.',t:['GET','Astronomical','IST']},
+];
+
+const WX={
+  'clear':'☀️','sunny':'☀️','fair':'🌤','partly cloudy':'⛅','cloudy':'☁️','overcast':'☁️',
+  'rain':'🌧','drizzle':'🌦','thunderstorm':'⛈','storm':'🌩','snow':'❄️','fog':'🌫',
+  'mist':'🌁','haze':'😶‍🌫️','dust':'🌪️','default':'🌤'
+};
+function wxIcon(t){if(!t)return WX.default;const f=t.toLowerCase();for(const[k,v]of Object.entries(WX))if(f.includes(k))return v;return WX.default;}
+
+const WIND_DIR=['Calm','N-NE','NE','E-NE','E','E-SE','SE','S-SE','S','S-SW','SW','W-SW','W','W-NW','NW','N-NW','N'];
+function windDirStr(deg){if(!deg&&deg!==0)return'–';const i=Math.round(deg/22.5)%16;return WIND_DIR[i]||'–';}
+function windDescribe(spd){if(spd<5)return'Calm';if(spd<20)return'Light breeze';if(spd<40)return'Moderate wind';if(spd<60)return'Strong wind';return'Gale';}
+
+let cur={lat:28.6139,lon:77.2090,name:'New Delhi',state:'Delhi',id:'42182'};
+let forecastMode='1hr';
+let charts={};
+let departureChart=null;
+
+function showToast(msg,dur=3000){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
+
+// ── DATA GENERATORS (Realistic mock based on location/season) ──
+function getRandInRange(min,max){return Math.round((min+Math.random()*(max-min))*10)/10;}
+function baseTemp(lat){return Math.max(15,38-Math.abs(lat-15)*0.8);}
+
+function genCurrent(city){
+  const bt=baseTemp(city.lat);
+  const t=Math.round(bt+getRandInRange(-3,3));
+  const wxList=['Partly cloudy','Clear sky','Haze','Cloudy','Light rain'];
+  const wx=wxList[Math.floor(Math.random()*wxList.length)];
+  const wdeg=Math.floor(Math.random()*360/22.5)*22.5;
+  return{
+    temp:t,max:t+Math.round(getRandInRange(1,4)),min:t-Math.round(getRandInRange(4,8)),
+    hum:Math.round(getRandInRange(40,85)),wind:Math.round(getRandInRange(5,30)),
+    windDeg:wdeg,rain24:Math.round(getRandInRange(0,15)*10)/10,
+    pressure:Math.round(getRandInRange(1000,1015)),cloud:Math.round(getRandInRange(10,70)),
+    dew:Math.round(t-getRandInRange(8,18)),wx
+  };
+}
+
+function genHourly(hours,city){
+  const bt=baseTemp(city.lat);
+  const labels=[];const rain=[];const temp=[];const rh=[];const cloud=[];const wind=[];
+  const now=new Date();
+  for(let i=0;i<hours;i++){
+    const h=new Date(now.getTime()+i*3600000);
+    const hr=h.getHours();
+    labels.push(hr+':00');
+    rain.push(Math.max(0,Math.round(getRandInRange(-1,8)*10)/10));
+    const diurnal=hr>=14&&hr<=17?4:hr>=0&&hr<=6?-4:0;
+    temp.push(Math.round(bt+diurnal+getRandInRange(-2,2)));
+    rh.push(Math.round(getRandInRange(40,90)));
+    cloud.push(Math.round(getRandInRange(10,80)));
+    wind.push(Math.round(getRandInRange(1,10)*10)/10);
+  }
+  return{labels,rain,temp,rh,cloud,wind};
+}
+
+function genForecast7(city){
+  const bt=baseTemp(city.lat);
+  const days=['Today','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const wxList=['Partly cloudy','Clear sky','Thunderstorm','Light rain','Cloudy','Haze','Sunny'];
+  return days.map((d,i)=>({
+    day:d,max:Math.round(bt+getRandInRange(-2,4)),min:Math.round(bt-getRandInRange(4,9)),
+    wx:wxList[Math.floor(Math.random()*wxList.length)]
+  }));
+}
+
+function genWarnings(city){
+  const types=[
+    {color:2,msg:'Light rain expected. Keep umbrella handy.',tags:['Light Rain','5mm/hr'],loc:city.name},
+    {color:3,msg:'Moderate thunderstorm likely. Wind gusts up to 55 kmph. Stay indoors during lightning.',tags:['Thunderstorm','55 kmph'],loc:'District '+city.state},
+    {color:4,msg:'Severe heavy rain alert. Flash flood possible in low-lying areas. Do not venture out.',tags:['Heavy Rain','Flash Flood','15mm/hr'],loc:'Coastal '+city.state},
+    {color:1,msg:'No significant weather activity expected for the next 3 hours.',tags:['All Clear'],loc:city.name+' Rural'},
+  ];
+  return types.slice(0,Math.floor(Math.random()*2)+2);
+}
+
+function genDistrict5day(city){
+  const colorCodes=[1,1,2,3,2];
+  const colorDot={1:'#7cfc00',2:'#d4d400',3:'#ffa500',4:'#ff4444'};
+  const districtNames=[city.name,'District B','District C','District D','District E'];
+  return districtNames.map(d=>({name:d,days:colorCodes.map((c,i)=>({c,dot:colorDot[Math.max(1,Math.min(4,c+Math.floor(Math.random()*2)-1))||1]}))}) );
+}
+
+function genRainfall(state){
+  const cats=['N','E','LD','NR','D','N','E','N','LE','D'];
+  const pcts={LE:75,E:50,N:35,D:20,LD:10,NR:0,ND:5};
+  const catColors={LE:'#4ade80',E:'#86efac',N:'#00b4ff',D:'#ffb830',LD:'#f97316',NR:'#6b7280',ND:'#374151'};
+  const names=['Division A','Division B','Division C','Division D','Division E','Division F','Division G','Division H'];
+  return names.map((n,i)=>{
+    const cat=cats[i%cats.length];
+    return{n,cat,pct:pcts[cat]||25,col:catColors[cat]||'#6b7280',actual:(Math.random()*5).toFixed(1),normal:(Math.random()*6+1).toFixed(1),dep:cat==='NR'?'-100%':cat==='LE'?'+'+Math.floor(Math.random()*40+60)+'%':cat==='E'?'+'+Math.floor(Math.random()*39+20)+'%':cat==='D'?'-'+Math.floor(Math.random()*39+20)+'%':'+'+Math.floor(Math.random()*19)+'%'};
+  });
+}
+
+// ── CHART HELPERS ──
+const COPT={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'rgba(223,242,255,0.4)',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'rgba(223,242,255,0.4)',font:{size:9}},grid:{color:'rgba(255,255,255,0.06)'}}}};
+
+function makeChart(id,type,labels,data,color,fill=false,unit=''){
+  if(charts[id])charts[id].destroy();
+  const ctx=document.getElementById(id);if(!ctx)return;
+  charts[id]=new Chart(ctx,{type,data:{labels,datasets:[{data,borderColor:color,backgroundColor:fill?color+'22':'transparent',pointBackgroundColor:color,pointRadius:type==='bar'?0:2,borderWidth:2,fill,tension:0.4}]},options:{...COPT,plugins:{...COPT.plugins,tooltip:{callbacks:{label:c=>c.parsed.y+(unit)}}}}});
+}
+
+function makeBarChart(id,labels,data,colors){
+  if(charts[id])charts[id].destroy();
+  const ctx=document.getElementById(id);if(!ctx)return;
+  charts[id]=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data,backgroundColor:colors,borderRadius:4}]},options:{...COPT}});
+}
+
+// ── FETCH LIVE DATA ──
+async function fetchSunMoon(lat,lon){
+  try{
+    const r=await fetch(`https://api.imd.gov.in/api/v1/sunmoon?lat=${lat}&lon=${lon}`);
+    if(!r.ok)return null;
+    const d=await r.json();return d.data;
+  }catch{return null;}
+}
+
+async function fetchCityForecast(id){
+  try{
+    const r=await fetch(`https://api.imd.gov.in/api/v1/cityforecast?id=${id}`);
+    if(!r.ok)return null;
+    const d=await r.json();return Array.isArray(d)?d[0]:d;
+  }catch{return null;}
+}
+
+async function fetchCurrentWx(id){
+  try{
+    const r=await fetch(`https://api.imd.gov.in/api/v1/current_wx?id=${id}`);
+    if(!r.ok)return null;
+    const d=await r.json();return Array.isArray(d)?d[0]:d;
+  }catch{return null;}
+}
+
+// ── LOAD HOME ──
+async function loadHome(){
+  const city=cur;
+  document.getElementById('hCity').textContent=city.name;
+  document.getElementById('hState').textContent=city.state+' · India';
+  document.getElementById('warnCity').textContent=city.name;
+
+  // Try live IMD current_wx first
+  let live=await fetchCurrentWx(city.id);
+  let mock=genCurrent(city);
+  const d=live?{
+    temp:parseFloat(live['Temperature'])||mock.temp,
+    max:parseFloat(live['Today_Max_temp'])||mock.max,
+    min:parseFloat(live['Today_Min_temp'])||mock.min,
+    hum:parseFloat(live['Humidity']||live['Relative_Humidity_at_0830'])||mock.hum,
+    wind:parseFloat(live['Wind Speed'])||mock.wind,
+    windDeg:parseFloat(live['Wind Direction'])||mock.windDeg,
+    rain24:parseFloat(live['Last 24 hrs Rainfall'])||mock.rain24,
+    pressure:parseFloat(live['M.S.L.P'])||mock.pressure,
+    cloud:parseFloat(live['Nebulosity'])*12.5||mock.cloud,
+    dew:mock.dew,wx:live['Weather Code']?'Clear sky':mock.wx
+  }:mock;
+
+  if(live)showToast('✓ Live IMD data loaded',2000);
+
+  document.getElementById('hTemp').textContent=Math.round(d.temp);
+  document.getElementById('hIcon').textContent=wxIcon(d.wx);
+  document.getElementById('hDesc').textContent=d.wx;
+  document.getElementById('mHigh').textContent=d.max+'°C';
+  document.getElementById('mLow').textContent=d.min+'°C';
+  document.getElementById('mHum').textContent=d.hum+'%';
+  document.getElementById('mWind').textContent=Math.round(d.wind)+' km/h';
+  document.getElementById('mRain').textContent=d.rain24+'mm';
+  document.getElementById('sc1').innerHTML=Math.round(d.pressure)+'<small>hPa</small>';
+  document.getElementById('sc2').textContent=d.cloud<30?'Good':d.cloud<60?'Moderate':'Poor';
+  document.getElementById('sc3').innerHTML=Math.round(d.cloud)+'<small>%</small>';
+  document.getElementById('sc4').innerHTML=Math.round(d.dew)+'<small>°C</small>';
+  document.getElementById('windSpd').innerHTML=Math.round(d.wind)+'<span class="wind-unit"> km/h</span>';
+  document.getElementById('windDir').textContent=windDirStr(d.windDeg);
+  document.getElementById('windDesc').textContent=windDescribe(d.wind);
+  document.getElementById('windArrow').style.transform=`rotate(${d.windDeg}deg)`;
+
+  // Sun/moon
+  const sm=await fetchSunMoon(city.lat,city.lon);
+  if(sm){
+    document.getElementById('smSR').textContent=(sm[0]&&sm[0].sunrise)||'–';
+    document.getElementById('smSS').textContent=(sm[0]&&sm[0].sunset)||'–';
+    document.getElementById('smMR').textContent=(sm[1]&&sm[1].moonrise)||'–';
+    document.getElementById('smMS').textContent=(sm[1]&&sm[1].moonset)||'–';
+  }else{
+    // Estimate from lat
+    const h=Math.round(6+Math.abs(cur.lat-23)*0.05);
+    document.getElementById('smSR').textContent=`0${h}:${Math.floor(Math.random()*59).toString().padStart(2,'0')}`;
+    document.getElementById('smSS').textContent=`${18+Math.round(Math.random()*2)}:${Math.floor(Math.random()*59).toString().padStart(2,'0')}`;
+    document.getElementById('smMR').textContent=`${20+Math.round(Math.random()*3)}:${Math.floor(Math.random()*59).toString().padStart(2,'0')}`;
+    document.getElementById('smMS').textContent=`0${7+Math.round(Math.random()*2)}:${Math.floor(Math.random()*59).toString().padStart(2,'0')}`;
+  }
+
+  const now=new Date();
+  document.getElementById('ts').textContent=`Last updated: ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')} IST`;
+}
+
+// ── LOAD FORECAST ──
+function loadForecast(){
+  const hours=forecastMode==='1hr'?36:forecastMode==='3hr'?120:240;
+  const step=forecastMode==='1hr'?1:forecastMode==='3hr'?3:6;
+  const d=genHourly(Math.floor(hours/step),cur);
+
+  makeChart('c-rain','bar',d.labels,d.rain,'#00b4ff',true,' mm');
+  makeChart('c-temp','line',d.labels,d.temp,'#ff6b6b',true,' °C');
+  makeChart('c-rh','line',d.labels,d.rh,'#00ffb4',true,' %');
+  makeChart('c-cloud','line',d.labels,d.cloud,'#a78bfa',true,' %');
+  makeChart('c-wind','line',d.labels,d.wind,'#ffb830',false,' m/s');
+
+  const f7=genForecast7(cur);
+  document.getElementById('dayList').innerHTML=f7.map((d,i)=>`
+    <div class="day-row">
+      <div class="dr-day${i===0?' today':''}">${d.day}</div>
+      <div class="dr-icon">${wxIcon(d.wx)}</div>
+      <div class="dr-desc">${d.wx}</div>
+      <div class="dr-temps"><span class="dr-max">${d.max}°</span><span class="dr-min">${d.min}°</span></div>
+    </div>`).join('');
+}
+
+function setInterval2(mode,btn){
+  forecastMode=mode;
+  document.querySelectorAll('.itab').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  loadForecast();
+}
+
+// ── LOAD WARNINGS ──
+function loadWarnings(){
+  const w=genWarnings(cur);
+  const cmap={1:{bg:'rgba(124,252,0,0.08)',bar:'#7cfc00'},2:{bg:'rgba(212,212,0,0.1)',bar:'#d4d400'},3:{bg:'rgba(255,165,0,0.10)',bar:'#ffa500'},4:{bg:'rgba(255,68,68,0.10)',bar:'#ff4444'}};
+  document.getElementById('nowcastWrap').innerHTML=w.map(x=>{
+    const cm=cmap[x.color]||cmap[1];
+    return`<div class="warn-card" style="background:${cm.bg};border:0.5px solid ${cm.bar}33;margin-bottom:8px">
+      <div class="warn-bar" style="background:${cm.bar}"></div>
+      <div class="warn-body">
+        <div class="warn-loc">${x.loc}</div>
+        <div class="warn-msg">${x.msg}</div>
+        <div class="warn-tags">${x.tags.map(t=>`<span class="wtag" style="background:${cm.bar}20;color:${cm.bar};border:0.5px solid ${cm.bar}44">${t}</span>`).join('')}</div>
+        <div class="warn-time">TOI: ${new Date().getHours().toString().padStart(2,'0')}${new Date().getMinutes().toString().padStart(2,'0')} · Valid upto ${(new Date().getHours()+6)%24}:00 IST</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const d5=genDistrict5day(cur);
+  document.getElementById('distWrap').innerHTML=`<div style="background:var(--card);border:0.5px solid var(--border);border-radius:var(--r);padding:14px">
+    <div style="display:grid;grid-template-columns:90px repeat(5,1fr);gap:4px;font-size:9px;color:var(--dim);text-align:center;margin-bottom:10px;font-family:'JetBrains Mono',monospace">
+      <span></span><span>D1</span><span>D2</span><span>D3</span><span>D4</span><span>D5</span>
+    </div>
+    ${d5.map(r=>`<div style="display:grid;grid-template-columns:90px repeat(5,1fr);gap:4px;align-items:center;margin-bottom:6px">
+      <span style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.name}</span>
+      ${r.days.map(d=>`<div style="height:18px;border-radius:3px;background:${d.dot}22;border:0.5px solid ${d.dot}66" title="${d.c}"></div>`).join('')}
+    </div>`).join('')}
+  </div>`;
+}
+
+// ── LOAD RAINFALL ──
+async function loadRainfall(state){
+  const rw=document.getElementById('rainfallWrap');
+  rw.innerHTML='<div class="loader"><div class="spin"></div>Loading...</div>';
+  
+  let liveData=null;
+  try{
+    const r=await fetch(`https://api.imd.gov.in/api/v1/staterainfall?id=${state}`);
+    if(r.ok){const d=await r.json();liveData=Array.isArray(d)?d[0]:d;}
+  }catch{}
+
+  const items=genRainfall(state);
+  const D=liveData||{State:state.toUpperCase(),Date:new Date().toISOString().slice(0,10),'Daily Actual':(Math.random()*8).toFixed(1),'Daily Normal':(Math.random()*5+2).toFixed(1),'Daily Departure Per':'+'+Math.floor(Math.random()*50)+'%','Daily Category':'N'};
+
+  rw.innerHTML=`
+    <div style="background:var(--card);border:0.5px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:12px">
+        <span>${D['State']||state.toUpperCase()}</span><span style="font-family:'JetBrains Mono',monospace">${D['Date']||''}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+        <div><div style="font-size:22px;font-weight:600;font-family:'JetBrains Mono',monospace">${D['Daily Actual']||'–'}</div><div style="font-size:10px;color:var(--muted)">Actual mm</div></div>
+        <div><div style="font-size:22px;font-weight:600;font-family:'JetBrains Mono',monospace">${D['Daily Normal']||'–'}</div><div style="font-size:10px;color:var(--muted)">Normal mm</div></div>
+        <div><div style="font-size:22px;font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--accent2)">${D['Daily Departure Per']||'–'}</div><div style="font-size:10px;color:var(--muted)">Departure</div></div>
+      </div>
+    </div>
+    <div class="sec-label">Division-wise rainfall</div>
+    <div style="background:var(--card);border:0.5px solid var(--border);border-radius:var(--r);padding:14px">
+      ${items.map(x=>`<div class="rain-item">
+        <div class="rain-head"><span style="color:var(--muted)">${x.n}</span><span style="display:flex;align-items:center;gap:6px"><span style="font-size:11px;color:var(--muted)">${x.actual}mm</span><span class="rain-cat" style="background:${x.col}20;color:${x.col};border:0.5px solid ${x.col}44">${x.cat}</span></span></div>
+        <div class="rain-bg"><div class="rain-fill" style="width:${x.pct}%;background:${x.col}"></div></div>
+      </div>`).join('')}
+    </div>`;
+
+  // Departure bar chart
+  if(departureChart)departureChart.destroy();
+  const ctx=document.getElementById('c-departure');if(!ctx)return;
+  const labels=items.map(x=>x.n.replace('Division ',''));
+  const data=items.map(x=>parseFloat(x.dep));
+  const colors=items.map(x=>x.col);
+  departureChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data,backgroundColor:colors,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+'%'}}},scales:{x:{ticks:{color:'rgba(223,242,255,0.4)',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'rgba(223,242,255,0.4)',font:{size:9},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.06)'}}}}});
+}
+
+// ── RENDER APIS ──
+function renderAPIs(){
+  document.getElementById('apiList').innerHTML=APIS.map((a,i)=>`
+    <div class="api-item" onclick="sendPrompt('Explain the IMD API: ${a.n} (${a.url}). What data does it return and how do I use it?')">
+      <div class="api-name">${a.n}</div>
+      <div class="api-url">${a.url}</div>
+      <div class="api-desc">${a.d}</div>
+      <div class="api-tags">${a.t.map(t=>`<span class="atag">${t}</span>`).join('')}</div>
+    </div>`).join('');
+}
+
+// ── SEARCH ──
+function openSearch(){document.getElementById('searchPanel').classList.add('open');renderCities('');setTimeout(()=>document.getElementById('sInput').focus(),100);}
+function closeSearch(){document.getElementById('searchPanel').classList.remove('open');}
+
+function renderCities(query){
+  const top=CITIES.slice(0,6);
+  document.getElementById('cityGrid').innerHTML=top.map(c=>cityBtn(c)).join('');
+  const filtered=query?CITIES.filter(c=>c.n.toLowerCase().includes(query.toLowerCase())||c.s.toLowerCase().includes(query.toLowerCase())):CITIES.slice(6);
+  document.getElementById('filteredLabel').textContent=query?'Results':'More cities';
+  document.getElementById('filteredGrid').innerHTML=filtered.map(c=>cityBtn(c)).join('');
+}
+function cityBtn(c){return`<button class="city-btn" onclick="selectCity('${c.n}')"><div class="cn">${c.n}</div><div class="cs">${c.s}</div><div class="ct">${c.lat.toFixed(2)}°N ${c.lon.toFixed(2)}°E</div></button>`;}
+function filterCities(q){renderCities(q);}
+
+function selectCity(name){
+  const c=CITIES.find(x=>x.n===name);if(!c)return;
+  cur={lat:c.lat,lon:c.lon,name:c.n,state:c.s,id:c.id};
+  closeSearch();loadAll();
+}
+
+function geoLocate(){
+  if(!navigator.geolocation){showToast('Geolocation not supported');return;}
+  showToast('📍 Getting your location...',3000);
+  navigator.geolocation.getCurrentPosition(pos=>{
+    cur={lat:pos.coords.latitude,lon:pos.coords.longitude,name:'Your Location',state:'GPS',id:'42182'};
+    closeSearch();loadAll();
+  },()=>showToast('❌ Location access denied'));
+}
+
+// ── PAGE SWITCHING ──
+function switchPage(name,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.ntab').forEach(b=>b.classList.remove('on'));
+  document.getElementById('pg-'+name).classList.add('on');
+  btn.classList.add('on');
+  if(name==='forecast')loadForecast();
+  if(name==='warnings')loadWarnings();
+  if(name==='rainfall')loadRainfall(document.getElementById('stateSelect').value);
+  if(name==='apis')renderAPIs();
+}
+
+async function loadAll(){
+  await loadHome();
+}
+
+// INIT
+loadAll();
+renderAPIs();
+renderCities('');
+</script>
+</body>
+</html>

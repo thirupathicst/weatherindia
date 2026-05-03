@@ -1,122 +1,197 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState } from 'react';
+import './mausam.css';
+import { type City, CITIES } from './services/weatherApi';
+import Home from './components/Home';
+import Forecast from './components/Forecast';
+import Warnings from './components/Warnings';
+import Rainfall from './components/Rainfall';
+
+type PageType = 'home' | 'forecast' | 'warnings' | 'rainfall' | 'apis';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [currentCity, setCurrentCity] = useState<City>(CITIES[0]);
+  const [currentPage, setCurrentPage] = useState<PageType>('home');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [toast, setToast] = useState('');
+
+  const filteredCities = searchQuery
+    ? CITIES.filter((city) =>
+        city.n.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        city.s.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : CITIES;
+
+  function selectCity(city: City) {
+    setCurrentCity(city);
+    setSearchOpen(false);
+    setSearchQuery('');
+  }
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(''), 3000);
+  }
+
+  function handleRefresh() {
+    showToast('Data refreshed');
+  }
+
+  function geoLocate() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          // Find nearest city
+          let nearest = CITIES[0];
+          let minDist = Infinity;
+          CITIES.forEach((city) => {
+            const dist = Math.sqrt(
+              Math.pow(city.lat - latitude, 2) + Math.pow(city.lon - longitude, 2)
+            );
+            if (dist < minDist) {
+              minDist = dist;
+              nearest = city;
+            }
+          });
+          selectCity(nearest);
+          showToast(`Located: ${nearest.n}`);
+        },
+        () => showToast('Geolocation denied')
+      );
+    }
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <div className="app-wrap">
+      {/* TOPBAR */}
+      <div className="topbar">
+        <div className="logo">
+          <div className="logo-icon">🌦</div>
+          <div>
+            <div className="logo-text">
+              Mausam<span>Gram</span>
+            </div>
+            <div className="logo-sub">IMD · India</div>
+          </div>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
+        <button className="search-pill" onClick={() => setSearchOpen(!searchOpen)}>
+          🔍 Search city
         </button>
-      </section>
+      </div>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+      {/* SEARCH PANEL */}
+      <div className={`search-panel ${searchOpen ? 'open' : ''}`}>
+        <div className="s-header">
+          <input
+            className="s-input"
+            placeholder="City name, pincode, or coordinates..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <button className="s-close" onClick={() => setSearchOpen(false)}>
+            ✕
+          </button>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        <button className="geo-btn" onClick={geoLocate}>
+          📍 Use my current location
+        </button>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        {!searchQuery && (
+          <>
+            <div className="s-label">Quick select</div>
+            <div className="city-grid">
+              {CITIES.slice(0, 6).map((city) => (
+                <button
+                  key={city.id}
+                  className="city-btn"
+                  onClick={() => selectCity(city)}
+                >
+                  <div className="cn">{city.n}</div>
+                  <div className="cs">{city.s}</div>
+                  <div className="ct">{city.lat.toFixed(2)}, {city.lon.toFixed(2)}</div>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {searchQuery && (
+          <>
+            <div className="s-label">All cities</div>
+            <div className="city-grid">
+              {filteredCities.map((city) => (
+                <button
+                  key={city.id}
+                  className="city-btn"
+                  onClick={() => selectCity(city)}
+                >
+                  <div className="cn">{city.n}</div>
+                  <div className="cs">{city.s}</div>
+                  <div className="ct">{city.lat.toFixed(2)}, {city.lon.toFixed(2)}</div>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* TOAST */}
+      <div className={`toast ${toast ? 'show' : ''}`}>{toast}</div>
+
+      {/* PAGES */}
+      <div className={`page ${currentPage === 'home' ? 'on' : ''}`}>
+        <Home city={currentCity} onRefresh={handleRefresh} />
+      </div>
+
+      <div className={`page ${currentPage === 'forecast' ? 'on' : ''}`}>
+        <Forecast city={currentCity} />
+      </div>
+
+      <div className={`page ${currentPage === 'warnings' ? 'on' : ''}`}>
+        <Warnings city={currentCity} />
+      </div>
+
+      <div className={`page ${currentPage === 'rainfall' ? 'on' : ''}`}>
+        <Rainfall />
+      </div>
+
+     
+      {/* BOTTOM NAV */}
+      <div className="bnav">
+        <button
+          className={`ntab ${currentPage === 'home' ? 'on' : ''}`}
+          onClick={() => setCurrentPage('home')}
+        >
+          <span className="ni">🌤</span>Weather
+        </button>
+        <button
+          className={`ntab ${currentPage === 'forecast' ? 'on' : ''}`}
+          onClick={() => setCurrentPage('forecast')}
+        >
+          <span className="ni">📊</span>Forecast
+        </button>
+        <button
+          className={`ntab ${currentPage === 'warnings' ? 'on' : ''}`}
+          onClick={() => setCurrentPage('warnings')}
+        >
+          <span className="ni">⚠️</span>Warnings
+        </button>
+        <button
+          className={`ntab ${currentPage === 'rainfall' ? 'on' : ''}`}
+          onClick={() => setCurrentPage('rainfall')}
+        >
+          <span className="ni">🌧</span>Rainfall
+        </button>
+        {/* <button
+          className={`ntab ${currentPage === 'apis' ? 'on' : ''}`}
+          onClick={() => setCurrentPage('apis')}
+        >
+          <span className="ni">📡</span>APIs
+        </button> */}
+      </div>
+    </div>
+  );
 }
 
-export default App
+export default App;

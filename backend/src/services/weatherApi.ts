@@ -40,69 +40,42 @@ export const CITIES: City[] = [
   { n: "Kochi", s: "Kerala", lat: 9.9312, lon: 76.2673, id: "43371" },
 ];
 
-export async function fetchSunMoon(lat: number, lon: number) {
-  try {
-    const r = await axios.get(
-      `https://api.imd.gov.in/api/v1/sunmoon?lat=${lat}&lon=${lon}`
-    );
-    return r.data.data || r.data;
-  } catch {
-    return null;
-  }
+
+async function getYesterdayYYYYMMDD() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+
+  return (
+    d.getFullYear() +
+    String(d.getMonth() + 1).padStart(2, "0") +
+    String(d.getDate()).padStart(2, "0")
+  );
 }
-
-export async function fetchCurrentWx(id: string) {
-  try {
-    const r = await axios.get(
-      `https://api.imd.gov.in/api/v1/current_wx?id=${id}`
-    );
-    return Array.isArray(r.data) ? r.data[0] : r.data;
-  } catch {
-    return null;
-  }
-}
-
-// export async function fetchDistrictNowcast(id: number) {
-//   try {
-//     const r = await axios.get(
-//       `https://api.imd.gov.in/api/v1/districtnowcast?id=${id}`
-//     );
-//     return r.data;
-//   } catch {
-//     return null;
-//   }
-// }
-
-// export async function fetchDistrictRainfall(id: number) {
-//   try {
-//     const r = await axios.get(
-//       `https://api.imd.gov.in/api/v1/districtrainfall?id=${id}`
-//     );
-//     return r.data;
-//   } catch {
-//     return null;
-//   }
-// }
-
-// export async function fetchStateRainfall(state: string) {
-//   try {
-//     const r = await axios.get(
-//       `https://api.imd.gov.in/api/v1/staterainfall?id=${state}`
-//     );
-//     return r.data;
-//   } catch {
-//     return null;
-//   }
-// }
 
 export async function fetchHourlyForecast(lat: number, lon: number) {
   try {
     // IMD API endpoint for hourly forecast (1-hour, 1.5-day)
-    const r = await axios.get(
-      `https://mausamgram.imd.gov.in/test4_mme.php?lat_gfs=${lat}&lon_gfs=${lon}&date=${(new Date().toISOString().split("T")[0] ?? "").replace(/-/g, "")}00_1hr_0p125`
-    );
+    const rr = 'https://mausamgram.imd.gov.in/test4_mme.php?lat_gfs=18.375&lon_gfs=79.625&date=2026050200_1hr_0p125';
+      //`https://mausamgram.imd.gov.in/test4_mme.php?lat_gfs=${lat}&lon_gfs=${lon}&date=${await getYesterdayYYYYMMDD()}00_1hr_0p125`;
+    const r = await axios.get(rr);
     return r.data;
-  } catch {
+  } catch (error) {
+    console.error("Error fetching hourly forecast:", error);
     return null;
   }
 }
+
+
+export async function fetchNext10daysHourlyForecast(lat: number, lon: number) {
+  try {
+    // IMD API endpoint for hourly forecast (1-hour, 1.5-day)
+    const rr = 'https://mausamgram.imd.gov.in/test4_mme.php?lat_gfs=18.375&lon_gfs=79.625&date=2026050200_6hr_0p125';
+      //`https://mausamgram.imd.gov.in/test4_mme.php?lat_gfs=${lat}&lon_gfs=${lon}&date=${await getYesterdayYYYYMMDD()}00_1hr_0p125`;
+    const r = await axios.get(rr);
+    return r.data;
+  } catch (error) {
+    console.error("Error fetching hourly forecast:", error);
+    return null;
+  }
+}
+

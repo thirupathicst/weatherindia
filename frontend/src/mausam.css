@@ -37,7 +37,7 @@ body {
 }
 
 .app-wrap {
-  max-width: 440px;
+  width: 80%;
   margin: 0 auto;
   min-height: 100vh;
   display: flex;
@@ -520,7 +520,7 @@ body {
 .dr-day {
   font-size: 12px;
   color: var(--muted);
-  width: 42px;
+  width: 100px;
 }
 
 .dr-day.today {

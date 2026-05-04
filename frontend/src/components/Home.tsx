@@ -24,7 +24,7 @@ export default function Home({ city, onRefresh }: HomeProps) {
     setLastUpdated(new Date().toLocaleTimeString('en-IN'));
 
     // Fetch sun/moon
-    const sm = await fetchSunMoon(city.lat, city.lon);
+    const sm = await fetchSunMoon(city.id);
     setSunMoon(sm);
   }
 

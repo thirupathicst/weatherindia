@@ -4,13 +4,9 @@ import cors from "cors";
 import {
   CITIES,
   fetchHourlyForecast,
-  fetchCurrentWx,
-  fetchSunMoon,
+  fetchNext10daysHourlyForecast,
 } from "./services/weatherApi.js";
-import {
-  parseHourlyForecast,
-  generateForecast7Day,
-} from "./utils/apiParser.js";
+import { parse10DayForecast, parseHourlyForecast } from "./utils/apiParser.js";
 
 const app = express();
 app.use(cors());
@@ -30,7 +26,7 @@ app.get("/api/current/:id", async (req: any, res: any) => {
   const { id } = req.params;
   const city = CITIES.find((c) => c.id === id);
   if (!city) return res.status(404).json({ error: "City not found" });
-  const live = await fetchCurrentWx(id);
+  const live = await fetchHourlyForecast(city.lat, city.lon);
 
   // Map IMD API fields → frontend CurrentWeather shape
   if (live) {
@@ -50,15 +46,7 @@ app.get("/api/current/:id", async (req: any, res: any) => {
     return res.json(data);
   }
 
-  // Fallback mock data when API unavailable
-  const lat = city.lat;
-  const baseT = Math.round(38 - Math.abs(lat - 15) * 0.8);
-  res.json({
-    temp: baseT, max: baseT + 3, min: baseT - 6,
-    hum: 55, wind: 14, windDeg: 210, rain24: 0,
-    pressure: 1008, cloud: 20, dew: baseT - 10,
-    wx: "Partly cloudy",
-  });
+  res.status(503).json({ error: "Weather data unavailable" });
 });
 
 // ── SUN & MOON ──
@@ -67,11 +55,22 @@ app.get("/api/sunmoon/:id", async (req: any, res: any) => {
   const city = CITIES.find((c) => c.id === id);
   if (!city) return res.status(404).json({ error: "City not found" });
 
-  const sm = await fetchSunMoon(city.lat, city.lon);
-  if (sm) return res.json(sm);
-
-  // Fallback approximate times (IST)
-  res.json({ sunrise: "06:05", sunset: "18:45", moonrise: "19:30", moonset: "06:20" });
+  // Generate approximate sun/moon times based on latitude and date
+  const now = new Date();
+  const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
+  
+  // Approximate sunrise/sunset based on latitude and day of year
+  const lat = city.lat;
+  const baseHours = 12 + Math.sin((dayOfYear - 81) * Math.PI / 182) * 4;
+  const sunriseHour = Math.max(5, Math.min(8, baseHours - 6));
+  const sunsetHour = Math.max(16, Math.min(19, baseHours + 6));
+  
+  const sunrise = String(Math.floor(sunriseHour)).padStart(2, '0') + ':' + String(Math.floor((sunriseHour % 1) * 60)).padStart(2, '0');
+  const sunset = String(Math.floor(sunsetHour)).padStart(2, '0') + ':' + String(Math.floor((sunsetHour % 1) * 60)).padStart(2, '0');
+  const moonrise = String((Math.floor(sunriseHour) + 6) % 24).padStart(2, '0') + ':' + String(Math.floor((sunriseHour % 1) * 60)).padStart(2, '0');
+  const moonset = String((Math.floor(sunsetHour) + 6) % 24).padStart(2, '0') + ':' + String(Math.floor((sunsetHour % 1) * 60)).padStart(2, '0');
+  
+  res.json({ sunrise, sunset, moonrise, moonset });
 });
 
 // ── FORECAST (Hourly & 7-day) ──
@@ -79,50 +78,23 @@ app.get("/api/forecast/:id", async (req: any, res: any) => {
   const { id } = req.params;
   const city = CITIES.find((c) => c.id === id);
   if (!city) return res.status(404).json({ error: "City not found" });
-    const apiData = await fetchHourlyForecast(18.1958, 79.7079);
-console.log("Fetching current weather for 18.1958, 79.7079");
-
-  const hourly = apiData ? parseHourlyForecast(apiData) : { labels: [], temp: [], wind: [], rain: [], humidity: [], cloud: [] };
-  const forecast7 = generateForecast7Day();
-
+  const apiData = await fetchHourlyForecast(city.lat, city.lon);
+  const hourly = apiData ? parseHourlyForecast(apiData) : { labels: [], temp: [], wind: [], rain: [], rh: [], cloud: [] };
+  const next10days = await fetchNext10daysHourlyForecast(city.lat, city.lon);
+  const forecast7 = next10days ? parse10DayForecast(next10days) : [];
   res.json({ hourly, forecast7 });
 });
 
 // ── WARNINGS ──
 app.get("/api/warnings/:id", (req: any, res: any) => {
   const { id } = req.params;
-  const city = CITIES.find((c) => c.id === id);
-  if (!city) return res.status(404).json({ error: "City not found" });
-
-  const nowcast = [
-    { color: 2, msg: "Light rain expected.", tags: ["Light Rain"], loc: city.n, time: new Date().toISOString() },
-  ];
-  const district5day = [{ name: city.n, days: [{ c: 1, dot: "#7cfc00" }, { c: 1, dot: "#7cfc00" }, { c: 2, dot: "#d4d400" }] }];
-
-  res.json({ nowcast, district5day });
+  if (!CITIES.find((c) => c.id === id)) return res.status(404).json({ error: "City not found" });
+  res.json({ nowcast: [], district5day: [] });
 });
 
 // ── RAINFALL ──
-app.get("/api/rainfall/:state", (req: any, res: any) => {
-  const { state } = req.params;
-  const cats = ["N", "E", "LD"];
-  const pcts: Record<string, number> = { LE: 75, E: 50, N: 35, D: 20, LD: 10, NR: 0 };
-  const catColors: Record<string, string> = { LE: "#4ade80", E: "#86efac", N: "#00b4ff", D: "#ffb830", LD: "#f97316", NR: "#6b7280" };
-
-  const rainfall = ["Division A", "Division B", "Division C"].map((n, i) => {
-    const cat = cats[i] ?? "N";
-    return {
-      n,
-      cat,
-      pct: pcts[cat] ?? 25,
-      col: catColors[cat] ?? "#6b7280",
-      actual: (Math.random() * 5).toFixed(1),
-      normal: (Math.random() * 6 + 1).toFixed(1),
-      dep: "+" + Math.floor(Math.random() * 30) + "%",
-    };
-  });
-
-  res.json(rainfall);
+app.get("/api/rainfall/:state", (_req: any, res: any) => {
+  res.json([]);
 });
 
 app.listen(5000, () => console.log("🚀 API running on port 5000"));

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './mausam.css';
-import { type City, CITIES } from './services/weatherApi';
+import { type City, fetchCities } from './services/weatherApi';
 import Home from './components/Home';
 import Forecast from './components/Forecast';
 import Warnings from './components/Warnings';
@@ -9,18 +9,28 @@ import Rainfall from './components/Rainfall';
 type PageType = 'home' | 'forecast' | 'warnings' | 'rainfall' | 'apis';
 
 function App() {
-  const [currentCity, setCurrentCity] = useState<City>(CITIES[0]);
+  const [cities, setCities] = useState<City[]>([]);
+  const [currentCity, setCurrentCity] = useState<City | null>(null);
   const [currentPage, setCurrentPage] = useState<PageType>('home');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState('');
 
+  useEffect(() => {
+    fetchCities().then((data) => {
+      if (data.length) {
+        setCities(data);
+        setCurrentCity(data[0]);
+      }
+    });
+  }, []);
+
   const filteredCities = searchQuery
-    ? CITIES.filter((city) =>
+    ? cities.filter((city) =>
         city.n.toLowerCase().includes(searchQuery.toLowerCase()) ||
         city.s.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : CITIES;
+    : cities;
 
   function selectCity(city: City) {
     setCurrentCity(city);
@@ -43,9 +53,10 @@ function App() {
         (position) => {
           const { latitude, longitude } = position.coords;
           // Find nearest city
-          let nearest = CITIES[0];
+          if (!cities.length) return;
+          let nearest = cities[0];
           let minDist = Infinity;
-          CITIES.forEach((city) => {
+          cities.forEach((city) => {
             const dist = Math.sqrt(
               Math.pow(city.lat - latitude, 2) + Math.pow(city.lon - longitude, 2)
             );
@@ -101,7 +112,7 @@ function App() {
           <>
             <div className="s-label">Quick select</div>
             <div className="city-grid">
-              {CITIES.slice(0, 6).map((city) => (
+              {cities.slice(0, 6).map((city) => (
                 <button
                   key={city.id}
                   className="city-btn"
@@ -141,15 +152,15 @@ function App() {
 
       {/* PAGES */}
       <div className={`page ${currentPage === 'home' ? 'on' : ''}`}>
-        <Home city={currentCity} onRefresh={handleRefresh} />
+        {currentCity && <Home city={currentCity} onRefresh={handleRefresh} />}
       </div>
 
       <div className={`page ${currentPage === 'forecast' ? 'on' : ''}`}>
-        <Forecast city={currentCity} />
+        {currentCity && <Forecast city={currentCity} />}
       </div>
 
       <div className={`page ${currentPage === 'warnings' ? 'on' : ''}`}>
-        <Warnings city={currentCity} />
+        {currentCity && <Warnings city={currentCity} />}
       </div>
 
       <div className={`page ${currentPage === 'rainfall' ? 'on' : ''}`}>

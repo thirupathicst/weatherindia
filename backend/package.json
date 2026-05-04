@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch --inspect=9229 src/server.ts",
-    "debug": "node --inspect-brk=9229 --loader tsx src/server.ts",
+    "debug": "tsx --inspect=9229 src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js"
   },

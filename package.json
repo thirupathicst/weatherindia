@@ -6,7 +6,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "concurrently -n BACKEND,FRONTEND -c green,blue \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
-    "debug": "concurrently -n BACKEND,FRONTEND -c green,blue \"npm run debug --prefix backend\" \"npm run debug --prefix frontend\""
+    "debug": "concurrently -n BACKEND,FRONTEND -c green,blue \"npm run debug --prefix backend\" \"npm run debug --prefix frontend\"",
+    "build": "npm run build --prefix frontend && npm run bundle --prefix backend",
+    "build:prod": "npm run build",
+    "package": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$distFiles = Get-ChildItem ./backend/dist -Filter '*.js' -Depth 0; if ($distFiles) { Write-Host '✅ Build ready for deployment:'; $distFiles | ForEach-Object { Write-Host ('  - ' + $_.Name + ' (' + [math]::Round($_.Length / 1MB, 2) + ' MB)') } } else { Write-Host '❌ No bundle found. Run build:prod first.' }\"",
+    "start": "node backend/dist/app.js"
   },
   "keywords": [],
   "author": "",

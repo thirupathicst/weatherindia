@@ -55,7 +55,7 @@ async function getYesterdayYYYYMMDD() {
 export async function fetchHourlyForecast(lat: number, lon: number) {
   try {
     // IMD API endpoint for hourly forecast (1-hour, 1.5-day)
-    const rr = 'https://mausamgram.imd.gov.in/test4_mme.php?lat_gfs=18.375&lon_gfs=79.625&date=2026050200_1hr_0p125';
+    const rr = 'https://mausamgram.imd.gov.in/test4_mme.php?lat_gfs=18.375&lon_gfs=79.625&date=2026051000_1hr_0p125';
       //`https://mausamgram.imd.gov.in/test4_mme.php?lat_gfs=${lat}&lon_gfs=${lon}&date=${await getYesterdayYYYYMMDD()}00_1hr_0p125`;
     const r = await axios.get(rr);
     return r.data;
@@ -69,7 +69,7 @@ export async function fetchHourlyForecast(lat: number, lon: number) {
 export async function fetchNext10daysHourlyForecast(lat: number, lon: number) {
   try {
     // IMD API endpoint for hourly forecast (1-hour, 1.5-day)
-    const rr = 'https://mausamgram.imd.gov.in/test4_mme.php?lat_gfs=18.375&lon_gfs=79.625&date=2026050200_6hr_0p125';
+    const rr = 'https://mausamgram.imd.gov.in/test4_mme.php?lat_gfs=18.375&lon_gfs=79.625&date=2026051000_6hr_0p125';
       //`https://mausamgram.imd.gov.in/test4_mme.php?lat_gfs=${lat}&lon_gfs=${lon}&date=${await getYesterdayYYYYMMDD()}00_1hr_0p125`;
     const r = await axios.get(rr);
     return r.data;

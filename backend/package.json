@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --inspect=9229 src/server.ts",
+    "dev": "tsx watch src/server.ts",
     "debug": "tsx --inspect=9229 src/server.ts",
     "build": "tsc",
+    "bundle": "esbuild src/server.ts --bundle --format=esm --platform=node --target=node18 --outfile=dist/app.js --minify --external:express --external:cors --external:axios --external:redis",
     "start": "node dist/server.js"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "@types/node": "^25.6.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "esbuild": "^0.20.0"
   }
 }

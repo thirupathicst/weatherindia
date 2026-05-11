@@ -1,12 +1,17 @@
 console.log("🔥 Backend starting...");
 import express from "express";
 import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
 import {
   CITIES,
   fetchHourlyForecast,
   fetchNext10daysHourlyForecast,
 } from "./services/weatherApi.js";
 import { parse10DayForecast, parseHourlyForecast } from "./utils/apiParser.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors());
@@ -98,3 +103,17 @@ app.get("/api/rainfall/:state", (_req: any, res: any) => {
 });
 
 app.listen(5000, () => console.log("🚀 API running on port 5000"));
+
+// ── SERVE FRONTEND ──
+// Serve frontend static files (if built)
+const frontendPath = path.join(__dirname, "../../frontend/dist");
+app.use(express.static(frontendPath));
+
+// Fallback: serve index.html for client-side routing
+app.get("*", (_req: any, res: any) => {
+  res.sendFile(path.join(frontendPath, "index.html"), (err:any) => {
+    if (err) {
+      res.status(404).json({ error: "Frontend not built. Run: npm run build" });
+    }
+  });
+});
